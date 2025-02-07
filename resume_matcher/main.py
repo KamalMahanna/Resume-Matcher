@@ -9,7 +9,7 @@ init_logging_config()
 
 run_first()
 
-cwd = find_path("Resume-Matcher")
+cwd = find_path("resume-matcher")
 
 PROCESSED_RESUMES_PATH = os.path.join(cwd, "Data", "Processed", "Resumes/")
 PROCESSED_JOB_DESCRIPTIONS_PATH = os.path.join(

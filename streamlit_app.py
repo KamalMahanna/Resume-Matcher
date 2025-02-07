@@ -26,7 +26,7 @@ st.set_page_config(
 )
 
 init_logging_config()
-cwd = find_path("Resume-Matcher")
+cwd = find_path("resume-matcher")
 config_path = os.path.join(cwd, "scripts", "similarity")
 
 try:

@@ -6,7 +6,7 @@ import pathlib
 from .parser import ParseDocumentToJson
 from .utils import read_single_pdf, find_path
 
-cwd = find_path("Resume-Matcher")
+cwd = find_path("resume-matcher")
 
 READ_RESUME_FROM = os.path.join(cwd, "Data", "Resumes/")
 SAVE_RESUME_TO = os.path.join(cwd, "Data", "Processed", "Resumes/")

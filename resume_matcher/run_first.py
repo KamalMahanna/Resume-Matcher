@@ -5,7 +5,7 @@ from tqdm import tqdm
 from resume_matcher.scripts.processor import Processor
 from resume_matcher.scripts.utils import get_filenames_from_dir, find_path
 
-cwd = find_path("Resume-Matcher")
+cwd = find_path("resume-matcher")
 RESUMES_PATH = os.path.join(cwd, "Data", "Resumes/")
 JOB_DESCRIPTIONS_PATH = os.path.join(cwd, "Data", "JobDescription/")
 PROCESSED_RESUMES_PATH = os.path.join(cwd, "Data", "Processed", "Resumes/")

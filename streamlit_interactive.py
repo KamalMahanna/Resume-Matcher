@@ -28,7 +28,7 @@ st.set_page_config(
 )
 
 # Find the current working directory and configuration path
-cwd = find_path("Resume-Matcher")
+cwd = find_path("resume-matcher")
 config_path = os.path.join(cwd, "scripts", "similarity")
 
 # Check if NLTK punkt_tab data is available, if not, download it
