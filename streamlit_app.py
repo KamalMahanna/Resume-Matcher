@@ -80,35 +80,35 @@ with col1:
     st.markdown("#### Upload Resumes (PDF)")
     uploaded_resumes = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True, key="resumes")
     if uploaded_resumes:
-        for resume in uploaded_resumes:
-            with open(os.path.join("Data/Resumes", resume.name), "wb") as f:
-                f.write(resume.getbuffer())
+        st.session_state.uploaded_resumes = uploaded_resumes
 
 with col2:
-    st.markdown("#### Upload Job Descriptions (PDF)")
-    uploaded_jds = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True, key="jds")
-    if uploaded_jds:
-        for jd in uploaded_jds:
-            with open(os.path.join("Data/JobDescription", jd.name), "wb") as f:
-                f.write(jd.getbuffer())
+    st.markdown("#### Enter Job Description (Text)")
+    job_description_text = st.text_area("Paste job description text here", height=300, key="jd_text")
 
 # Process button
 if st.button("Process All Files"):
-    with st.spinner("Processing files..."):
-        success = process_all_files()
-        if success:
-            st.success("All files processed successfully!")
-            st.session_state.processing_complete = True
-        else:
-            st.error("Error processing files. Please check the logs.")
-            st.session_state.processing_complete = False
-    st.rerun()
+    if not st.session_state.get("uploaded_resumes") or not st.session_state.get("jd_text"):
+        st.error("Please upload at least one resume and provide a job description.")
+    else:
+        with st.spinner("Processing files..."):
+            success = process_all_files(st.session_state.get("uploaded_resumes", []), st.session_state.get("jd_text", ""))
+            if success:
+                st.success("All files processed successfully!")
+                st.session_state.processing_complete = True
+            else:
+                st.error("Error processing files. Please check the logs.")
+                st.session_state.processing_complete = False
+        st.rerun()
 
 st.divider()
 avs.add_vertical_space(1)
 
 if st.session_state.processing_complete:
-    resume_names = get_filenames_from_dir("Data/Processed/Resumes")
+    if "processed_resumes" in st.session_state and st.session_state.processed_resumes:
+        resume_names = list(st.session_state.processed_resumes.keys())
+    else:
+        resume_names = []
 
     st.markdown(
         f"##### There are {len(resume_names)} resumes present. Please select one from the menu below:"
@@ -117,8 +117,7 @@ if st.session_state.processing_complete:
 
     avs.add_vertical_space(5)
 
-    # st.write("You have selected ", output, " printing the resume")
-    selected_file = read_json("Data/Processed/Resumes/" + output)
+    selected_file = st.session_state.processed_resumes[output]
 
     avs.add_vertical_space(2)
     st.markdown("#### Parsed Resume Data")
@@ -182,93 +181,85 @@ if st.session_state.processing_complete:
     )
     st.write(fig)
 
-    avs.add_vertical_space(5)
-
-    job_descriptions = get_filenames_from_dir("Data/Processed/JobDescription")
-
-    st.markdown(
-        f"##### There are {len(job_descriptions)} job descriptions present. Please select one from the menu below:"
-    )
-    output = st.selectbox("", job_descriptions)
-
-    avs.add_vertical_space(5)
-
-    selected_jd = read_json("Data/Processed/JobDescription/" + output)
-
-    avs.add_vertical_space(2)
-    st.markdown("#### Job Description")
-    st.caption(
-        "Currently in the pipeline I'm parsing this from PDF but it'll be from txt or copy paste."
-    )
     avs.add_vertical_space(3)
-    # st.json(selected_file)
-    st.write(selected_jd["clean_data"])
 
-    st.markdown("#### Common Words between Job Description and Resumes Highlighted.")
+    if "processed_jds" in st.session_state and st.session_state.processed_jds:
+        selected_jd = st.session_state.processed_jds["job_description"]
 
-    annotated_text(
-        create_annotated_text(
-            selected_file["clean_data"], selected_jd["extracted_keywords"], "JD", "#F24C3D"
+        avs.add_vertical_space(2)
+        st.markdown("#### Job Description")
+        st.caption(
+            "Currently in the pipeline I'm parsing this from PDF but it'll be from txt or copy paste."
         )
-    )
+        avs.add_vertical_space(3)
+        # st.json(selected_file)
+        st.write(selected_jd["clean_data"])
 
-    st.write("Now let's take a look at the extracted entities from the job description.")
+        st.markdown("#### Common Words between Job Description and Resumes Highlighted.")
 
-    # Call the function with your data
-    create_star_graph(selected_jd["keyterms"], "Entities from Job Description")
-
-    df2 = pd.DataFrame(selected_jd["keyterms"], columns=["keyword", "value"])
-
-    # Create the dictionary
-    keyword_dict = {}
-    for keyword, value in selected_jd["keyterms"]:
-        keyword_dict[keyword] = value * 100
-
-    fig = go.Figure(
-        data=[
-            go.Table(
-                header=dict(
-                    values=["Keyword", "Value"], font=dict(size=12), fill_color="#070A52"
-                ),
-                cells=dict(
-                    values=[list(keyword_dict.keys()), list(keyword_dict.values())],
-                    line_color="darkslategray",
-                    fill_color="#6DA9E4",
-                ),
+        annotated_text(
+            create_annotated_text(
+                selected_file["clean_data"], selected_jd["extracted_keywords"], "JD", "#F24C3D"
             )
-        ]
-    )
-    st.plotly_chart(fig)
+        )
 
-    st.divider()
+        st.write("Now let's take a look at the extracted entities from the job description.")
 
-    fig = px.treemap(
-        df2,
-        path=["keyword"],
-        values="value",
-        color_continuous_scale="Rainbow",
-        title="Key Terms/Topics Extracted from the selected Job Description",
-    )
-    st.write(fig)
+        # Call the function with your data
+        create_star_graph(selected_jd["keyterms"], "Entities from Job Description")
 
-    avs.add_vertical_space(3)
+        df2 = pd.DataFrame(selected_jd["keyterms"], columns=["keyword", "value"])
 
-    resume_string = " ".join(selected_file["extracted_keywords"])
-    jd_string = " ".join(selected_jd["extracted_keywords"])
-    result = get_score(resume_string, jd_string)
-    similarity_score = round(result[0].score * 100, 2)
-    score_color = "green"
-    if similarity_score < 60:
-        score_color = "red"
-    elif 60 <= similarity_score < 75:
-        score_color = "orange"
-    st.markdown(
-        f"Similarity Score obtained for the resume and job description is "
-        f'<span style="color:{score_color};font-size:24px; font-weight:Bold">{similarity_score}</span>',
-        unsafe_allow_html=True,
-    )
-else:
-    st.warning("Please click 'Process All Files' button above to analyze your documents.")
+        # Create the dictionary
+        keyword_dict = {}
+        for keyword, value in selected_jd["keyterms"]:
+            keyword_dict[keyword] = value * 100
+
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(
+                        values=["Keyword", "Value"], font=dict(size=12), fill_color="#070A52"
+                    ),
+                    cells=dict(
+                        values=[list(keyword_dict.keys()), list(keyword_dict.values())],
+                        line_color="darkslategray",
+                        fill_color="#6DA9E4",
+                    ),
+                )
+            ]
+        )
+        st.plotly_chart(fig)
+
+        st.divider()
+
+        fig = px.treemap(
+            df2,
+            path=["keyword"],
+            values="value",
+            color_continuous_scale="Rainbow",
+            title="Key Terms/Topics Extracted from the selected Job Description",
+        )
+        st.write(fig)
+
+        avs.add_vertical_space(3)
+
+        resume_string = " ".join(selected_file["extracted_keywords"])
+        jd_string = " ".join(selected_jd["extracted_keywords"])
+        result = get_score(resume_string, jd_string)
+        similarity_score = round(result[0].score * 100, 2)
+        score_color = "green"
+        if similarity_score < 60:
+            score_color = "red"
+        elif 60 <= similarity_score < 75:
+            score_color = "orange"
+        st.markdown(
+            f"Similarity Score obtained for the resume and job description is "
+            f'<span style="color:{score_color};font-size:24px; font-weight:Bold">{similarity_score}</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.warning("Please click 'Process All Files' button above to analyze your documents.")
 
 # Go back to top
 st.markdown("[:arrow_up: Back to Top](#resume-matcher)")
